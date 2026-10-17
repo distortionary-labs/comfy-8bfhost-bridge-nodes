@@ -1,0 +1,28 @@
+# Devenv
+.devenv*
+devenv.local.nix
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# 8bf-host is a separate project, installed by the user; never commit a copy.
+8bf-host
+8bf-host.exe
+8bf-host-*
+
+# Filter plug-ins and the test filter's build output.
+*.8bf
+*.8bf.pipl
+*.so
+*.so.pipl
+*.dylib
+*.dll
