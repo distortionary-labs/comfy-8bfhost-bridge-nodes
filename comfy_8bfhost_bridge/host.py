@@ -29,6 +29,11 @@ EXIT_CANCELLED = 130
 # every plug-in file; later ones use 8bf-host's cache.
 LIST_TIMEOUT = 300.0
 
+# How a run ended.
+OK = "ok"
+ERROR = "error"
+CANCELLED = "cancelled"
+
 
 class HostError(RuntimeError):
     """8bf-host is missing or failed."""
@@ -43,7 +48,7 @@ class Result:
 
     @property
     def ok(self):
-        return self.status == "ok"
+        return self.status == OK
 
 
 def _candidates(home):
@@ -76,7 +81,7 @@ def find_executable(configured="", which=shutil.which, home=None, environ=None):
 
 
 def require_executable(configured="", config_hint="the bridge's config.json", which=shutil.which):
-    executable = find_executable(configured)
+    executable = find_executable(configured, which=which)
     if not executable:
         raise HostError(
             "8bf-host was not found. Download it from %s, then put it on PATH, set "
@@ -200,7 +205,7 @@ def run(command, pump=lambda: None, cancelled=lambda: False, grace=10.0, cwd=Non
             **_popen_flags(),
         )
     except OSError as exc:
-        return Result("error", "Could not start 8bf-host (%s): %s" % (command[0], exc))
+        return Result(ERROR, "Could not start 8bf-host (%s): %s" % (command[0], exc))
     stdout, stderr = [], []
     readers = [
         threading.Thread(target=_collect, args=(process.stdout, stdout), daemon=True),
@@ -233,12 +238,12 @@ def run(command, pump=lambda: None, cancelled=lambda: False, grace=10.0, cwd=Non
     output = "".join(stdout)
     if timed_out:
         message = "8bf-host did not finish within %g seconds." % timeout
-        return Result("error", message, output, log)
+        return Result(ERROR, message, output, log)
     if process.returncode == 0:
-        return Result("ok", stdout=output, log=log)
+        return Result(OK, stdout=output, log=log)
     if process.returncode == EXIT_CANCELLED or cancel_sent is not None:
-        return Result("cancelled", "Cancelled.", output, log)
-    return Result("error", _error_message(log, process.returncode), output, log)
+        return Result(CANCELLED, "Cancelled.", output, log)
+    return Result(ERROR, _error_message(log, process.returncode), output, log)
 
 
 def _objects(payload, key):

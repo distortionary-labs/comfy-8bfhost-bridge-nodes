@@ -48,7 +48,7 @@ def test_missing_executable(tmp_path):
 
 
 def test_missing_executable_explains_the_download(monkeypatch):
-    monkeypatch.setattr(host, "find_executable", lambda _configured: "")
+    monkeypatch.setattr(host, "find_executable", lambda _configured, which: "")
     with pytest.raises(host.HostError, match="github.com/distortionary-labs/8bf-host.*my.json"):
         host.require_executable("", "my.json")
 

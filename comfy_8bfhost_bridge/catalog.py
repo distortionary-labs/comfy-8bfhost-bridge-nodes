@@ -1,5 +1,6 @@
 """The filters 8bf-host found, as the node's filter list uses them."""
 
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -93,9 +94,7 @@ class Catalog:
         their id appended, since 8bf-host could not tell them apart either.
         """
         runnable = [entry for entry in self.filters if entry.runnable]
-        counts = {}
-        for entry in runnable:
-            counts[entry.label.lower()] = counts.get(entry.label.lower(), 0) + 1
+        counts = Counter(entry.label.lower() for entry in runnable)
         out = {}
         for entry in runnable:
             label = entry.label

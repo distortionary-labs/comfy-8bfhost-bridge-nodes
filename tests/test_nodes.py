@@ -54,7 +54,7 @@ def test_is_changed(user_dir, tmp_path):
     assert math.isnan(nodes.EightBfFilterByName.IS_CHANGED("x", bridge.SHOW_DIALOG))
     assert nodes.EightBfFilterByName.IS_CHANGED("x", bridge.DEFAULTS) == ""
     assert nodes.EightBfFilterByName.IS_CHANGED("x", bridge.LAST_USED) == ""
-    open(nodes.presets().path("x"), "w").write("{}")
+    open(nodes.presets().save_path("x"), "w").write("{}")
     saved = nodes.EightBfFilterByName.IS_CHANGED(" x ", bridge.LAST_USED)
     assert saved != ""
     preset = tmp_path / "p.json"

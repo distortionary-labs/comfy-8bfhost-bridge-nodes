@@ -30,7 +30,10 @@ def test_config_ignores_garbage(tmp_path, capsys):
 def test_preset_store(tmp_path):
     store = config_module.PresetStore(str(tmp_path / "presets"))
     assert store.existing("1a2b3c4d5e6f") is None
-    path = store.path("1a2b3c4d5e6f")
+    # Looking a preset up does not create the folder; preparing to save one does.
+    assert not (tmp_path / "presets").exists()
+    path = store.save_path("1a2b3c4d5e6f")
+    assert path == store.path("1a2b3c4d5e6f")
     assert os.path.dirname(path) == str(tmp_path / "presets")
     open(path, "w").write("{}")
     assert store.existing("1a2b3c4d5e6f") == path

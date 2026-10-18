@@ -65,8 +65,12 @@ class PresetStore:
         self.directory = directory
 
     def path(self, filter_id):
-        os.makedirs(self.directory, exist_ok=True)
         return os.path.join(self.directory, preset_name(filter_id))
+
+    def save_path(self, filter_id):
+        """The preset's path, with its folder created so 8bf-host can write it."""
+        os.makedirs(self.directory, exist_ok=True)
+        return self.path(filter_id)
 
     def existing(self, filter_id):
         """Return the preset path when one was saved, else None."""

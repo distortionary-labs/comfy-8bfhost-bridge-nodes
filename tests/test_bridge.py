@@ -97,7 +97,7 @@ def test_dialog_shows_once_per_batch(tmp_path):
 def test_defaults_never_load_a_preset(tmp_path):
     fake = FakeHost()
     store = PresetStore(str(tmp_path / "presets"))
-    open(store.path("1a2b3c4d5e6f"), "w").write("{}")
+    open(store.save_path("1a2b3c4d5e6f"), "w").write("{}")
     bridge.filter_frames(job(tmp_path, settings=bridge.DEFAULTS), frames(2), runner=fake)
     assert [fake.option(i, "--preset") for i in range(2)] == [None, None]
 
@@ -178,6 +178,17 @@ def test_bad_frames_and_masks(tmp_path):
         bridge.filter_frames(job(tmp_path), [np.zeros((1, 1, 5))], runner=fake)
     with pytest.raises(bridge.BridgeError, match="masks of shape"):
         bridge.filter_frames(job(tmp_path), frames(), [np.ones((2, 3, 1))], runner=fake)
+    assert fake.commands == []
+
+
+def test_a_bad_frame_late_in_the_batch_fails_before_any_run(tmp_path):
+    fake = FakeHost()
+    batch = frames(2) + [np.zeros((2, 3, 5))]
+    with pytest.raises(bridge.BridgeError, match="5 channels"):
+        bridge.filter_frames(job(tmp_path, settings=bridge.SHOW_DIALOG), batch, runner=fake)
+    masks = [np.ones((2, 3)), np.ones((4, 4))]
+    with pytest.raises(bridge.BridgeError, match="mask is 4x4"):
+        bridge.filter_frames(job(tmp_path), frames(2), masks, runner=fake)
     assert fake.commands == []
 
 

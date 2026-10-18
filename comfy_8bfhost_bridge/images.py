@@ -9,6 +9,16 @@ import numpy as np
 
 TUPLE_TYPES = {1: "GRAYSCALE", 2: "GRAYSCALE_ALPHA", 3: "RGB", 4: "RGB_ALPHA"}
 
+# Bytes per sample -> (MAXVAL, numpy dtype). 8bf-host reads and writes only these.
+SAMPLE_FORMATS = {1: (255, np.uint8), 2: (65535, ">u2")}
+
+
+def _sample_format(sample_bytes):
+    try:
+        return SAMPLE_FORMATS[sample_bytes]
+    except (KeyError, TypeError):
+        raise ValueError("samples are 1 or 2 bytes, not %r" % (sample_bytes,)) from None
+
 
 def to_samples(frame, sample_bytes):
     """Convert a float frame to PAM sample bytes, 1 or 2 bytes per sample.
@@ -16,10 +26,7 @@ def to_samples(frame, sample_bytes):
     Values outside 0..1 are clipped, and NaN becomes 0, since casting NaN
     to an integer gives an arbitrary value.
     """
-    if sample_bytes not in (1, 2):
-        raise ValueError("samples are 1 or 2 bytes, not %r" % (sample_bytes,))
-    maxval = 255 if sample_bytes == 1 else 65535
-    dtype = np.uint8 if sample_bytes == 1 else ">u2"
+    maxval, dtype = _sample_format(sample_bytes)
     values = np.nan_to_num(np.asarray(frame, dtype=np.float32), nan=0.0, posinf=1.0, neginf=0.0)
     scaled = np.clip(values, 0.0, 1.0) * maxval
     return np.rint(scaled).astype(dtype).tobytes()
@@ -27,8 +34,7 @@ def to_samples(frame, sample_bytes):
 
 def from_samples(data, width, height, channels, sample_bytes):
     """Convert PAM sample bytes back to a float32 frame."""
-    dtype = np.uint8 if sample_bytes == 1 else ">u2"
-    maxval = 255.0 if sample_bytes == 1 else 65535.0
+    maxval, dtype = _sample_format(sample_bytes)
     samples = np.frombuffer(data, dtype=dtype).reshape(height, width, channels)
     return samples.astype(np.float32) / maxval
 
@@ -39,9 +45,13 @@ def mask_to_gray(mask):
 
 
 def mask_bounds(mask):
-    """Return ``(x, y, width, height)`` around the selected pixels, or None."""
-    values = np.nan_to_num(np.asarray(mask, dtype=np.float32), nan=0.0, posinf=1.0, neginf=0.0)
-    selected = np.rint(np.clip(values, 0.0, 1.0) * 255) > 0
+    """Return ``(x, y, width, height)`` around the selected pixels, or None.
+
+    A pixel is selected when it is not black in the mask file 8bf-host gets.
+    """
+    height, width = np.shape(mask)
+    gray = np.frombuffer(mask_to_gray(mask), dtype=np.uint8).reshape(height, width)
+    selected = gray > 0
     rows = np.flatnonzero(selected.any(axis=1))
     columns = np.flatnonzero(selected.any(axis=0))
     if rows.size == 0:
@@ -55,7 +65,7 @@ def write_pam(path, width, height, channels, sample_bytes, data):
         width,
         height,
         channels,
-        255 if sample_bytes == 1 else 65535,
+        _sample_format(sample_bytes)[0],
         TUPLE_TYPES[channels],
     )
     with open(path, "wb") as handle:
@@ -89,9 +99,10 @@ def read_pam(path):
             "%s is %dx%d with %d channels, which cannot be read" % (path, width, height, channels)
         )
     # Other maxvals would need rescaling; 8bf-host only writes these two.
-    if maxval not in (255, 65535):
+    by_maxval = {entry[0]: size for size, entry in SAMPLE_FORMATS.items()}
+    if maxval not in by_maxval:
         raise ValueError("%s has MAXVAL %d; only 255 and 65535 are supported" % (path, maxval))
-    sample_bytes = 1 if maxval == 255 else 2
+    sample_bytes = by_maxval[maxval]
     data = content[end + len(b"ENDHDR\n") :]
     expected = width * height * channels * sample_bytes
     if len(data) != expected:
