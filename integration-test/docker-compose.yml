@@ -1,0 +1,33 @@
+# Starts ComfyUI with the nodes, waits until it answers, then runs the tests
+# against its HTTP API. `make integration-test` from the repository root
+# runs it and removes the containers afterwards.
+name: comfy-8bfhost-bridge-integration
+
+x-image: &image
+  image: comfy-8bfhost-bridge-integration
+  build:
+    context: ..
+    dockerfile: integration-test/Dockerfile
+    args:
+      EIGHTBF_HOST_REF: ${EIGHTBF_HOST_REF:-main}
+      COMFYUI_REF: ${COMFYUI_REF:-v0.41.3}
+
+services:
+  comfyui:
+    <<: *image
+    environment:
+      COMFY_8BFHOST_BRIDGE_DEBUG: "1"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8188/system_stats')"]
+      interval: 2s
+      timeout: 5s
+      retries: 90
+
+  tests:
+    <<: *image
+    depends_on:
+      comfyui:
+        condition: service_healthy
+    environment:
+      COMFYUI_URL: http://comfyui:8188
+    command: ["python", "-m", "pytest", "-v", "-p", "no:cacheprovider", "/integration-test/tests"]

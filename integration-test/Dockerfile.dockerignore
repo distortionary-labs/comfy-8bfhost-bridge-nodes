@@ -1,0 +1,12 @@
+# The build context is the repository root; send only what the image uses.
+*
+!__init__.py
+!LICENSE
+!README.md
+!pyproject.toml
+!comfy_8bfhost_bridge/
+!tests/conftest.py
+!tests/fixtures/
+!integration-test/build_filters.py
+!integration-test/tests/
+**/__pycache__

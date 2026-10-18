@@ -3,7 +3,7 @@ PYTEST ?= $(PYTHON) -m pytest
 COMFYUI ?= $(HOME)/ComfyUI
 TARGET := $(COMFYUI)/custom_nodes/comfy-8bfhost-bridge-nodes
 
-.PHONY: test lint format install clean
+.PHONY: test lint format install integration-test clean
 
 test:
 	$(PYTEST) -q
@@ -22,6 +22,14 @@ install:
 	cp -r __init__.py comfy_8bfhost_bridge LICENSE README.md pyproject.toml "$(TARGET)"
 	find "$(TARGET)" -name __pycache__ -type d -prune -exec rm -rf {} +
 	@echo "Installed to $(TARGET). Restart ComfyUI."
+
+# ComfyUI, 8bf-host and the test filter in Docker; see integration-test/README.md.
+COMPOSE := docker compose -f integration-test/docker-compose.yml
+
+integration-test:
+	$(COMPOSE) build
+	$(COMPOSE) up --abort-on-container-exit --exit-code-from tests; \
+	status=$$?; $(COMPOSE) down --volumes; exit $$status
 
 clean:
 	rm -rf .pytest_cache .ruff_cache
